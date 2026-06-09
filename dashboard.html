@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Investment Growth Calculator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0f2f8;
+    --muted: #8890a8;
+    --accent: #4f8ef7;
+    --accent2: #2dd4a0;
+    --accent3: #f7a94f;
+    --danger: #f46b6b;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --font: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  header {
+    margin-bottom: 2rem;
+  }
+
+  header h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  header p {
+    font-size: 0.875rem;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.25rem;
+  }
+
+  .metric-label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    font-weight: 500;
+    margin-bottom: 6px;
+  }
+
+  .metric-value {
+    font-size: 1.6rem;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+
+  .metric-value.blue { color: var(--accent); }
+  .metric-value.green { color: var(--accent2); }
+  .metric-value.amber { color: var(--accent3); }
+
+  .metric-sub {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 5px;
+  }
+
+  .controls-chart {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+
+  .controls {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+  }
+
+  .controls-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-weight: 500;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .control-group label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .control-group label span {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--surface2);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+    transition: transform 0.1s;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+  }
+
+  .chart-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+  }
+
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .chart-title {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .legend {
+    display: flex;
+    gap: 14px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+  }
+
+  .chart-canvas-wrap {
+    position: relative;
+    height: 260px;
+  }
+
+  .milestone-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .milestone-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  .milestones {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .milestone-pill {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    color: var(--text);
+  }
+
+  .milestone-pill strong {
+    color: var(--accent2);
+    font-weight: 600;
+  }
+
+  .rate-comparison {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    margin-top: 12px;
+  }
+
+  .rate-comparison-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-weight: 500;
+    margin-bottom: 10px;
+  }
+
+  .rate-rows {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .rate-row {
+    text-align: center;
+    padding: 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    transition: border-color 0.2s;
+  }
+
+  .rate-row.active {
+    border-color: var(--accent);
+    background: rgba(79,142,247,0.07);
+  }
+
+  .rate-row-label {
+    font-size: 0.68rem;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .rate-row-val {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  footer {
+    text-align: center;
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+
+  @media (max-width: 640px) {
+    .controls-chart { grid-template-columns: 1fr; }
+    .metrics { grid-template-columns: 1fr 1fr; }
+    .metrics .metric-card:last-child { grid-column: span 2; }
+    .rate-rows { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Investment Growth Calculator</h1>
+    <p>Compound interest projection with monthly contributions</p>
+  </header>
+
+  <div class="metrics">
+    <div class="metric-card">
+      <div class="metric-label">Final portfolio value</div>
+      <div class="metric-value blue" id="finalVal">—</div>
+      <div class="metric-sub" id="finalSub">—</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Total contributed</div>
+      <div class="metric-value amber" id="totalContrib">—</div>
+      <div class="metric-sub" id="contribSub">—</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Total growth</div>
+      <div class="metric-value green" id="totalGrowth">—</div>
+      <div class="metric-sub" id="growthSub">—</div>
+    </div>
+  </div>
+
+  <div class="controls-chart">
+    <div class="controls">
+      <div class="controls-title">Parameters</div>
+
+      <div class="control-group">
+        <label>Initial value <span id="initLabel">£18,000</span></label>
+        <input type="range" min="0" max="250000" step="1000" value="18000" id="initSlider">
+      </div>
+
+      <div class="control-group">
+        <label>Monthly contribution <span id="contribLabel">£250</span></label>
+        <input type="range" min="0" max="2000" step="25" value="250" id="contribSlider">
+      </div>
+
+      <div class="control-group">
+        <label>Annual return <span id="rateLabel">5.0%</span></label>
+        <input type="range" min="1" max="20" step="0.5" value="5" id="rateSlider">
+      </div>
+
+      <div class="control-group">
+        <label>Time horizon <span id="yearsLabel">30 yrs</span></label>
+        <input type="range" min="1" max="50" step="1" value="30" id="yearsSlider">
+      </div>
+
+      <div class="control-group">
+        <label>Prior gains already made <span id="priorLabel">£9,100</span></label>
+        <input type="range" min="0" max="50000" step="100" value="9100" id="priorSlider">
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-header">
+        <div class="chart-title">Portfolio value over time</div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#4f8ef7"></div>Total value</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#f7a94f"></div>Contributed</div>
+        </div>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="myChart" role="img" aria-label="Line chart showing portfolio growth over time, split between contributions and investment returns"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="milestone-bar">
+    <div class="milestone-label">Milestones</div>
+    <div class="milestones" id="milestones"></div>
+  </div>
+
+  <div class="rate-comparison">
+    <div class="rate-comparison-title">Value at selected horizon — by return rate</div>
+    <div class="rate-rows" id="rateRows"></div>
+  </div>
+
+  <footer>
+    For illustrative purposes only. Past performance does not guarantee future returns. Not financial advice.
+  </footer>
+
+</div>
+
+<script>
+const fmt = v => '£' + Math.round(v).toLocaleString('en-GB');
+const fmtShort = v => {
+  if (v >= 1e6) return '£' + (v/1e6).toFixed(2) + 'm';
+  if (v >= 1e3) return '£' + (v/1e3).toFixed(0) + 'k';
+  return '£' + Math.round(v);
+};
+
+function calc(init, monthly, rate, years) {
+  const mr = rate / 100 / 12;
+  const labels = [], totals = [], contribs = [];
+  for (let y = 0; y <= years; y++) {
+    const n = y * 12;
+    const fv = mr > 0
+      ? init * Math.pow(1 + mr, n) + monthly * (Math.pow(1 + mr, n) - 1) / mr
+      : init + monthly * n;
+    labels.push(y === 0 ? 'Now' : 'Yr ' + y);
+    totals.push(Math.round(fv));
+    contribs.push(Math.round(init + monthly * n));
+  }
+  return { labels, totals, contribs };
+}
+
+let chart;
+
+function update() {
+  const init = +document.getElementById('initSlider').value;
+  const monthly = +document.getElementById('contribSlider').value;
+  const rate = +document.getElementById('rateSlider').value;
+  const years = +document.getElementById('yearsSlider').value;
+  const prior = +document.getElementById('priorSlider').value;
+
+  document.getElementById('initLabel').textContent = fmt(init);
+  document.getElementById('contribLabel').textContent = '£' + monthly.toLocaleString('en-GB');
+  document.getElementById('rateLabel').textContent = rate.toFixed(1) + '%';
+  document.getElementById('yearsLabel').textContent = years + ' yr' + (years !== 1 ? 's' : '');
+  document.getElementById('priorLabel').textContent = fmt(prior);
+
+  const { labels, totals, contribs } = calc(init, monthly, rate, years);
+  const finalV = totals[totals.length - 1];
+  const finalC = contribs[contribs.length - 1];
+  const totalGrowth = finalV - finalC;
+  const allTimeGrowth = totalGrowth + prior;
+  const trueContrib = finalC - prior;
+
+  document.getElementById('finalVal').textContent = fmt(finalV);
+  document.getElementById('finalSub').textContent = 'After ' + years + ' years';
+  document.getElementById('totalContrib').textContent = fmt(finalC);
+  document.getElementById('contribSub').textContent = '£' + Math.round(monthly * years * 12).toLocaleString('en-GB') + ' in contributions + ' + fmt(init) + ' initial';
+  document.getElementById('totalGrowth').textContent = fmt(allTimeGrowth);
+  document.getElementById('growthSub').textContent = fmt(totalGrowth) + ' future + £' + prior.toLocaleString('en-GB') + ' already made';
+
+  // milestones
+  const targets = [50000, 100000, 250000, 500000, 1000000];
+  const ms = document.getElementById('milestones');
+  ms.innerHTML = '';
+  targets.forEach(t => {
+    let yr = null;
+    for (let i = 0; i < totals.length; i++) {
+      if (totals[i] >= t) { yr = i; break; }
+    }
+    const pill = document.createElement('div');
+    pill.className = 'milestone-pill';
+    if (yr !== null) {
+      pill.innerHTML = fmtShort(t) + ' <strong>yr ' + yr + '</strong>';
+    } else {
+      pill.innerHTML = '<span style="opacity:0.4">' + fmtShort(t) + ' — beyond horizon</span>';
+    }
+    ms.appendChild(pill);
+  });
+
+  // rate comparison
+  const compareRates = [5, 7, 10, 16];
+  const rr = document.getElementById('rateRows');
+  rr.innerHTML = '';
+  const labels2 = ['Conservative\n5%', 'Moderate\n7%', 'Historical avg\n10%', 'S&P 500 (8yr)\n16%'];
+  compareRates.forEach((r, i) => {
+    const { totals: t2 } = calc(init, monthly, r, years);
+    const div = document.createElement('div');
+    div.className = 'rate-row' + (Math.abs(r - rate) < 0.3 ? ' active' : '');
+    div.innerHTML = `<div class="rate-row-label">${labels2[i].replace('\n','<br>')}</div><div class="rate-row-val">${fmtShort(t2[t2.length-1])}</div>`;
+    rr.appendChild(div);
+  });
+
+  // chart
+  if (chart) {
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = totals;
+    chart.data.datasets[1].data = contribs;
+    chart.update('none');
+  } else {
+    chart = new Chart(document.getElementById('myChart'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Total value',
+            data: totals,
+            borderColor: '#4f8ef7',
+            backgroundColor: 'rgba(79,142,247,0.1)',
+            fill: true,
+            tension: 0.35,
+            pointRadius: 0,
+            borderWidth: 2,
+          },
+          {
+            label: 'Total contributed',
+            data: contribs,
+            borderColor: '#f7a94f',
+            backgroundColor: 'rgba(247,169,79,0.06)',
+            fill: true,
+            tension: 0.35,
+            pointRadius: 0,
+            borderWidth: 1.5,
+            borderDash: [5, 3],
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#22263a',
+            borderColor: 'rgba(255,255,255,0.1)',
+            borderWidth: 1,
+            titleColor: '#8890a8',
+            bodyColor: '#f0f2f8',
+            padding: 10,
+            callbacks: {
+              label: ctx => ' ' + ctx.dataset.label + ': ' + fmt(ctx.parsed.y)
+            }
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: '#8890a8', font: { size: 11 }, maxTicksLimit: 10 },
+            grid: { color: 'rgba(255,255,255,0.04)' },
+            border: { color: 'rgba(255,255,255,0.08)' }
+          },
+          y: {
+            ticks: {
+              color: '#8890a8',
+              font: { size: 11 },
+              callback: v => v >= 1e6 ? '£' + (v/1e6).toFixed(1) + 'm' : '£' + (v/1e3).toFixed(0) + 'k'
+            },
+            grid: { color: 'rgba(255,255,255,0.04)' },
+            border: { color: 'rgba(255,255,255,0.08)' }
+          }
+        }
+      }
+    });
+  }
+}
+
+['initSlider','contribSlider','rateSlider','yearsSlider','priorSlider'].forEach(id => {
+  document.getElementById(id).addEventListener('input', update);
+});
+
+update();
+</script>
+</body>
+</html>
